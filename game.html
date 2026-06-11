@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D PC Builder</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: sans-serif; }
+        #ui { position: absolute; top: 15px; left: 15px; z-index: 10; pointer-events: none; color: white; text-shadow: 1px 1px 2px black; }
+        h1 { font-size: 22px; margin: 0 0 5px 0; }
+        p { font-size: 14px; margin: 0; color: #00FF00; }
+        /* Nút bấm để lắp ráp */
+        #btn-install { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); padding: 15px 30px; font-size: 18px; font-weight: bold; background: #007BFF; color: white; border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; pointer-events: auto; }
+        #btn-install:active { background: #0056b3; transform: translateX(-50%) translateY(2px); }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="ui">
+        <h1>Lắp ráp PC 3D</h1>
+        <p>Vuốt để xoay 360° | Chụm để Zoom</p>
+    </div>
+    <button id="btn-install">Lắp CPU vào Main</button>
+
+    <script>
+        // 1. Cài đặt không gian 3D cơ bản
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x222222);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 7, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Cho phép dùng ngón tay xoay góc nhìn trên iPhone
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Đánh sáng để nhìn rõ khối 3D
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // 2. Tạo Mainboard (Hình hộp chữ nhật màu đen nhám)
+        const mainGeo = new THREE.BoxGeometry(6, 0.2, 8);
+        const mainMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+        const mainboard = new THREE.Mesh(mainGeo, mainMat);
+        scene.add(mainboard);
+
+        // Tạo Socket CPU trên Mainboard (Màu xanh lá)
+        const socketGeo = new THREE.BoxGeometry(1.6, 0.3, 1.6);
+        const socketMat = new THREE.MeshStandardMaterial({ color: 0x2E7D32 });
+        const socket = new THREE.Mesh(socketGeo, socketMat);
+        socket.position.set(0, 0.1, -1.5);
+        scene.add(socket);
+
+        // 3. Tạo CPU lơ lửng chờ lắp ráp
+        const cpuGeo = new THREE.BoxGeometry(1.4, 0.2, 1.4);
+        
+        // LẤY ẢNH CPU TRỰC TIẾP TỪ LINK MẠNG LÀM BỀ MẶT (Không cần tải về)
+        const textureLoader = new THREE.TextureLoader();
+        const cpuTexture = textureLoader.load('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Intel_Core_i5_processor.jpg/512px-Intel_Core_i5_processor.jpg');
+        
+        // Dán ảnh mặt trên, các mặt bên màu bạc kim loại
+        const cpuMaterials = [
+            new THREE.MeshStandardMaterial({ color: 0xaaaaaa }), // Phải
+            new THREE.MeshStandardMaterial({ color: 0xaaaaaa }), // Trái
+            new THREE.MeshStandardMaterial({ map: cpuTexture }), // MẶT TRÊN
+            new THREE.MeshStandardMaterial({ color: 0x555555 }), // Mặt dưới
+            new THREE.MeshStandardMaterial({ color: 0xaaaaaa }), // Trước
+            new THREE.MeshStandardMaterial({ color: 0xaaaaaa }), // Sau
+        ];
+        
+        const cpu = new THREE.Mesh(cpuGeo, cpuMaterials);
+        cpu.position.set(4, 3, 0); // Đặt lơ lửng bên phải
+        // Tạo hiệu ứng xoay lơ lửng cho ngầu
+        cpu.rotation.x = 0.5;
+        cpu.rotation.y = 0.5;
+        scene.add(cpu);
+
+        // 4. Logic khi bấm nút Lắp ráp
+        document.getElementById('btn-install').addEventListener('click', () => {
+            // Di chuyển CPU về đúng socket và đặt phẳng lại
+            cpu.position.set(0, 0.35, -1.5);
+            cpu.rotation.set(0, 0, 0);
+            
+            // Đổi giao diện nút
+            const btn = document.getElementById('btn-install');
+            btn.innerText = "✅ Đã lắp CPU thành công";
+            btn.style.background = "#28a745";
+        });
+
+        // 5. Render hình ảnh liên tục (60 FPS)
+        function animate() {
+            requestAnimationFrame(animate);
+            // Xoay nhẹ CPU nếu nó chưa được lắp
+            if(cpu.position.x > 0) {
+                cpu.rotation.y += 0.01;
+            }
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Tự chỉnh lại kích thước khi xoay ngang điện thoại
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
